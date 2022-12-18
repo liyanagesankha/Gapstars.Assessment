@@ -6,7 +6,10 @@
 
 <PageTitle>Index</PageTitle>
 
-<h1>Artists</h1>
+<div class="clearfix">
+    <h1 class="float-start me-2">Artists</h1>
+    <input class="form-control p-2 w-25 float-end" @bind="artistNameSearchText" @oninput="OnArtistNameSearchTextChange" type="text" id="ArtistsNameSearchInput" placeholder="Search artist by name.">
+</div>
 
 @if (artists == null)
 {

@@ -20,12 +20,33 @@ namespace Chinook.Pages
         {
             StateContainer.OnChange += StateHasChanged;
             StateContainer.SetValueList(UserPlayListService.GetAllAsync().Result);
-            artists =  await ArtistService.GetAllAsync();
+            artists = await GetArtistsAsync();
         }
-                
+
+        private async Task OnArtistNameSearchTextChange(ChangeEventArgs args)
+        {
+            var value = args?.Value;
+            if (value is null)
+            {
+                return;
+            }
+
+            artistNameSearchText = value.ToString();
+            artists = await GetArtistsAsync(artistNameSearchText);
+        }
         public void Dispose()
         {
             StateContainer.OnChange -= StateHasChanged;
+        }
+
+        private async Task<IList<Artist>> GetArtistsAsync(string? searchText = null)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                return await ArtistService.GetAllAsync() ?? new List<Artist>();
+            }
+
+            return await ArtistService.GetAllFilterByNameAsync(searchText);
         }
     }
 }
