@@ -1,22 +1,66 @@
 ﻿using Chinook.ClientModels;
+using Microsoft.EntityFrameworkCore;
 
 namespace Chinook.Services
 {
     public class ArtistService : IArtistService
     {
-        public Task<IList<Artist>> GetAllAsync()
+        private readonly IDbContextFactory<ChinookContext> _dbFactory;
+
+        public ArtistService(IDbContextFactory<ChinookContext> contextFactory)
         {
-            throw new NotImplementedException();
+            _dbFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         }
 
-        public Task<IList<Artist>> GetAllFilterByNameAsync(string searchText)
+        public async Task<IList<Artist>> GetAllAsync()
         {
-            throw new NotImplementedException();
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            return await dbContext.Artists
+                .Include(a => a.Albums)
+                .Select(a => new Artist()
+                {
+                    Id = a.ArtistId,
+                    Name = a.Name,
+                    AlbumCount = a.Albums.Count
+                }).ToListAsync();
         }
 
-        public Task<Artist> GetByIdAsync(long artistId)
+        public async Task<IList<Artist>> GetAllFilterByNameAsync(string searchText)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                throw new ArgumentNullException(nameof(searchText));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            return await dbContext.Artists
+                .Include(a => a.Albums)
+                .Where(a => !string.IsNullOrWhiteSpace(a.Name) && a.Name.Contains(searchText))
+                .Select(a => new Artist()
+                {
+                    Id = a.ArtistId,
+                    Name = a.Name,
+                    AlbumCount = a.Albums.Count
+                }).ToListAsync();
+        }
+
+        public async Task<Artist> GetByIdAsync(long artistId)
+        {
+            if (artistId < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(artistId));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            return await dbContext.Artists
+                .Include(a => a.Albums)
+                .Where(a => a.ArtistId == artistId)
+                .Select(a => new Artist()
+                {
+                    Id = a.ArtistId,
+                    Name = a.Name,
+                    AlbumCount = a.Albums.Count
+                }).SingleAsync();
         }
     }
 }
