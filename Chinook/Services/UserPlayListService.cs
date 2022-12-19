@@ -137,27 +137,42 @@ namespace Chinook.Services
             await dbContext.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Remove selected track from selected play list
+        /// </summary>
+        /// <param name="id">Playlist ID</param>
+        /// <param name="trackId">Track ID</param>
+        /// <returns>When the task done</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Invalid parameters</exception>
+        /// <exception cref="NullReferenceException">Given track is not found.</exception>
         public async Task RemoveTrackAsync(long id, long trackId)
         {
+            //Playlist ID validation
             if (id < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(id));
             }
 
+            //track ID validation
             if (trackId < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(trackId));
             }
 
+            //Create database context
             var dbContext = await _dbFactory.CreateDbContextAsync();
+            //Get play list entity
             var playList = await dbContext.Playlists.Where(p => p.PlaylistId == id).Include(p => p.Tracks).SingleAsync();
-
+            
+            //Get track entity
             var track = await dbContext.Tracks.FindAsync(trackId);
             if (track == null)
             {
                 throw new NullReferenceException(nameof(track));
             }
 
+            //Remove the track from play list
+            //then save changes
             playList.Tracks.Remove(track);
             await dbContext.SaveChangesAsync();
         }
