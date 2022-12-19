@@ -26,22 +26,51 @@ namespace Chinook.Services
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         }
 
-        public Task<long> AddAsync(Playlist playList)
+        public async Task<long> AddAsync(ClientModels.Playlist playList)
+        {
+            if (playList == null)
+            {
+                throw new ArgumentNullException(nameof(playList));
+            }
+
+            var newPlayListName = playList.Name;
+            if (string.IsNullOrWhiteSpace(newPlayListName))
+            {
+                throw new ArgumentNullException(nameof(newPlayListName));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            var currentUserId = await _authService.GetUserIdAsync();
+            var newPlayListId = await dbContext.Playlists.Select(p => p.PlaylistId).MaxAsync() + 1;
+            var newPlayList = new Models.Playlist
+            {
+                PlaylistId = newPlayListId,
+                Name = newPlayListName
+            };
+
+            var userPlaylist = new Models.UserPlaylist
+            {
+                Playlist = newPlayList,
+                UserId = currentUserId
+            };
+
+            await dbContext.Playlists.AddAsync(newPlayList);
+            await dbContext.UserPlaylists.AddAsync(userPlaylist);
+            await dbContext.SaveChangesAsync();
+            return newPlayListId;
+        }
+
+        public async Task UpdateAsync(long id, ClientModels.Playlist playList)
+        {
+            throw new NotImplementedException(); 
+        }
+
+        public async Task DeleteAsync(long id)
         {
             throw new NotImplementedException();
         }
 
-        public Task UpdateAsync(long id, Playlist playList)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task DeleteAsync(long id)
-        {
-            throw new NotImplementedException();
-        }
-                
-        public async Task<IList<Playlist>> GetAllAsync()
+        public async Task<IList<ClientModels.Playlist>> GetAllAsync()
         {
             var currentUserId = await _authService.GetUserIdAsync();
             var dbContext = await _dbFactory.CreateDbContextAsync();
@@ -65,24 +94,72 @@ namespace Chinook.Services
                 .ToListAsync();
         }
 
-        public Task<Playlist> GetByIdAsync(long id)
+        public async Task<long> GetPlayListIdByNameAsync(string name)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            var currentUserId = await _authService.GetUserIdAsync();
+            return await dbContext.UserPlaylists
+                .Where(p => p.UserId == currentUserId && p.Playlist.Name == name)
+                .Select(p => p.PlaylistId)
+                .FirstOrDefaultAsync();
         }
 
-        public Task<long> GetPlayListIdByNameAsync(string name)
+        public async Task AddTrackAsync(long id, long trackId)
         {
-            throw new NotImplementedException();
+            if (id < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(id));
+            }
+
+            if (trackId < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(trackId));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            var playList = await dbContext.Playlists.FindAsync(id);
+            if (playList == null)
+            {
+                throw new NullReferenceException(nameof(playList));
+            }
+
+            var track = await dbContext.Tracks.FindAsync(trackId);
+            if (track == null)
+            {
+                throw new NullReferenceException(nameof(track));
+            }
+            playList.Tracks.Add(track);
+            await dbContext.SaveChangesAsync();
         }
 
-        public Task AddTrackAsync(long id, long trackId)
+        public async Task RemoveTrackAsync(long id, long trackId)
         {
-            throw new NotImplementedException();
-        }
+            if (id < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(id));
+            }
 
-        public Task RemoveTrackAsync(long id, long trackId)
-        {
-            throw new NotImplementedException();
+            if (trackId < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(trackId));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            var playList = await dbContext.Playlists.Where(p => p.PlaylistId == id).Include(p => p.Tracks).SingleAsync();
+
+            var track = await dbContext.Tracks.FindAsync(trackId);
+            if (track == null)
+            {
+                throw new NullReferenceException(nameof(track));
+            }
+
+            playList.Tracks.Remove(track);
+            await dbContext.SaveChangesAsync();
         }
 
         #endregion Public Methods
