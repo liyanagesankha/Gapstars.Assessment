@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Chinook.Services
 {
+    /// <summary>
+    /// This class contains User play list related services
+    /// </summary>
     public class UserPlayListService : IUserPlayListService
     {
         #region Private Variables
@@ -26,7 +29,7 @@ namespace Chinook.Services
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         }
 
-        public async Task<long> AddAsync(ClientModels.Playlist playList)
+        public async Task<long> AddAsync(Playlist playList)
         {
             if (playList == null)
             {
@@ -60,24 +63,54 @@ namespace Chinook.Services
             return newPlayListId;
         }
 
-        public async Task UpdateAsync(long id, ClientModels.Playlist playList)
+        public async Task UpdateAsync(long id, Playlist playList)
         {
-            throw new NotImplementedException(); 
+            if (id < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(id));
+            }
+
+            if (playList == null)
+            {
+                throw new ArgumentNullException(nameof(playList));
+            }
+
+            var playListName = playList.Name;
+            if (string.IsNullOrWhiteSpace(playListName))
+            {
+                throw new ArgumentNullException(nameof(playListName));
+            }
+
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            var dbPlayList = dbContext.Playlists.FirstOrDefault(p => p.PlaylistId == id);
+            if (dbPlayList == null)
+            {
+                throw new NullReferenceException(nameof(dbPlayList));
+            }
+
+            dbPlayList.Name = playListName;
+            await dbContext.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(long id)
         {
-            throw new NotImplementedException();
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            var currentUserId = await _authService.GetUserIdAsync();
+            var dbUserPlayList = await dbContext.UserPlaylists.Where(u => u.UserId == currentUserId && u.PlaylistId == id).FirstAsync();           
+            dbContext.UserPlaylists.Remove(dbUserPlayList);
+            //var dbPlayList = await dbContext.Playlists.Where(p => p.PlaylistId == id).SingleAsync();
+            //dbContext.Playlists.Remove(dbPlayList);
+            await dbContext.SaveChangesAsync();
         }
 
-        public async Task<IList<ClientModels.Playlist>> GetAllAsync()
+        public async Task<IList<Playlist>> GetAllAsync()
         {
             var currentUserId = await _authService.GetUserIdAsync();
             var dbContext = await _dbFactory.CreateDbContextAsync();
             return await dbContext.UserPlaylists
                 .Where(p => p.UserId == currentUserId)
                 .Include(p => p.Playlist.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
-                .Select(p => new ClientModels.Playlist()
+                .Select(p => new Playlist()
                 {
                     Id = p.PlaylistId,
                     Name = p.Playlist.Name,

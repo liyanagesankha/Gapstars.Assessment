@@ -5,7 +5,23 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
 
-<h1>Playlist <strong>@Playlist.Name</strong></h1>
+<div class="clearfix">
+    <h1>
+        <label class="float-start"> Playlist:</label>
+        @if (isPlayListRenaming)
+        {
+            <input @bind="Playlist.Name" type="text" id="PlaylistNameInput" class="form-control m-1 p-2 w-25 float-start" placeholder="Name for the playlist">
+            <a href="#" class="m-1 float-start ms-2" title="Save play list name" @onclick="@(() => RenamePlayListName())" @onclick:preventDefault><i class="bi bi-save"></i></a>
+        }
+        else
+        {
+            <span class="float-start"><strong>@Playlist.Name</strong></span>
+            <a href="#" class="m-1 float-start" title="Edit play list name" @onclick="@(() => isPlayListRenaming = true)" @onclick:preventDefault><i class="bi bi-pencil-square"></i></a>
+        }
+
+        <a href="#" class="m-1 float-start" title="Remove play list" @onclick="@(() => RemovePlayList())" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+    </h1>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(InfoMessage))
 {

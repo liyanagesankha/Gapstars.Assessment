@@ -8,10 +8,12 @@ namespace Chinook.Pages
     {
         [Parameter] public long PlaylistId { get; set; }
         [Inject] IUserPlayListService UserPlayListService { get; set; }
+        [Inject] NavigationManager NavManager { get; set; }
         [Inject] StateContainer StateContainer { get; set; }
 
         private Playlist Playlist;
         private string InfoMessage;
+        private bool isPlayListRenaming = false;
 
         protected override async Task OnParametersSetAsync()
         {
@@ -54,6 +56,22 @@ namespace Chinook.Pages
             await UserPlayListService.RemoveTrackAsync(PlaylistId, trackId);
             InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {Playlist.Name}.";
             StateContainer.SetValueList(UserPlayListService.GetAllAsync().Result);
+        }
+
+        private async Task RemovePlayList()
+        {
+            InfoMessage = $"PlayList {Playlist.Name} is removing..";
+            await Task.Delay(2000);
+            await UserPlayListService.DeleteAsync(PlaylistId);
+            NavManager.NavigateTo("/");
+        }
+
+        private async Task RenamePlayListName()
+        {
+            await UserPlayListService.UpdateAsync(PlaylistId, Playlist);
+            InfoMessage = $"PlayList: {Playlist.Name} name updated successfully.";
+            StateContainer.SetValueList(UserPlayListService.GetAllAsync().Result);
+            isPlayListRenaming = false;
         }
 
         private void CloseInfoMessage()
