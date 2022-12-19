@@ -5,7 +5,23 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
 
-<h1>Playlist <strong>@Playlist.Name</strong></h1>
+<div class="clearfix">
+    <h1>
+        <label class="float-start"> Playlist:</label>
+        @if (isPlayListRenaming)
+        {
+            <input @bind="Playlist.Name" type="text" id="PlaylistNameInput" class="form-control m-1 p-2 w-25 float-start" placeholder="Name for the playlist">
+            <a href="#" class="m-1 float-start ms-2" title="Save play list name" @onclick="@(() => RenamePlayListName())" @onclick:preventDefault><i class="bi bi-save"></i></a>
+        }
+        else
+        {
+            <span class="float-start"><strong>@Playlist.Name</strong></span>
+            <a href="#" class="m-1 float-start" title="Edit play list name" @onclick="@(() => isPlayListRenaming = true)" @onclick:preventDefault><i class="bi bi-pencil-square"></i></a>
+        }
+
+        <a href="#" class="m-1 float-start" title="Remove play list" @onclick="@(() => RemovePlayList())" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+    </h1>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(InfoMessage))
 {
@@ -21,7 +37,7 @@
 
 @if (Playlist == null)
 {
-     <Loading />
+    <Loading />
 }
 else
 {
@@ -30,16 +46,16 @@ else
             <tr>
                 <th>Track</th>
                 <th></th>
-        </tr>
+            </tr>
         </thead>
         <tbody>
-            @foreach (var track in Playlist.Tracks)
+            @foreach (var track in StateContainer.UserPlaylists.First(p => p.Id == PlaylistId).Tracks)
             {
                 <tr>
                     <td>@track.ArtistName - @track.AlbumTitle - @track.TrackName</td>
                     <td>
                         <div class="d-flex">
-                            @if (Playlist.Name != "Favorite")
+                            @if (Playlist.Name != Constants.FavoritePlayListName)
                             {
                                 @if (track.IsFavorite)
                                 {
@@ -49,8 +65,8 @@ else
                                 {
                                     <a href="#" class="m-1" title="Mark as favorite" @onclick="@(() => FavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star"></i></a>
                                 }
-
                             }
+
                             <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
@@ -58,70 +74,4 @@ else
             }
         </tbody>
     </table>
-}
-
-@code {
-    [Parameter] public long PlaylistId { get; set; }
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
-    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-
-    private Chinook.ClientModels.Playlist Playlist;
-    private string CurrentUserId;
-    private string InfoMessage;
-
-    protected override async Task OnInitializedAsync()
-    {
-        CurrentUserId = await GetUserId();
-
-        await InvokeAsync(StateHasChanged);
-        var DbContext = await DbFactory.CreateDbContextAsync();
-
-        Playlist = DbContext.Playlists
-            .Include(a => a.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
-            .Where(p => p.PlaylistId == PlaylistId)
-            .Select(p => new ClientModels.Playlist()
-                {
-                    Name = p.Name,
-                    Tracks = p.Tracks.Select(t => new ClientModels.PlaylistTrack()
-                    {
-                        AlbumTitle = t.Album.Title,
-                        ArtistName = t.Album.Artist.Name,
-                        TrackId = t.TrackId,
-                        TrackName = t.Name,
-                        IsFavorite = t.Playlists.Where(p => p.UserPlaylists.Any(up => up.UserId == CurrentUserId && up.Playlist.Name == "Favorites")).Any()
-                    }).ToList()
-                })
-            .FirstOrDefault();
-    }
-
-    private async Task<string> GetUserId()
-    {
-        var user = (await authenticationState).User;
-        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        return userId;
-    }
-
-    private void FavoriteTrack(long trackId)
-    {
-        var track = Playlist.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
-    }
-
-    private void UnfavoriteTrack(long trackId)
-    {
-        var track = Playlist.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist Favorites.";
-    }
-
-    private void RemoveTrack(long trackId)
-    {
-        CloseInfoMessage();
-
-    }
-
-    private void CloseInfoMessage()
-    {
-        InfoMessage = "";
-    }
-
 }
