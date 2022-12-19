@@ -19,7 +19,7 @@ builder.Services.AddServerSideBlazor();
 
 builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ChinookUser>>();
 
-builder.Services.AddSingleton<StateContainer>();
+builder.Services.AddScoped<StateContainer>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserPlayListService, UserPlayListService>();
